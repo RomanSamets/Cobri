@@ -1,0 +1,3 @@
+C:/GitHub/Projects/Cobri/Build/CMakeFiles/cobri.dir
+C:/GitHub/Projects/Cobri/Build/CMakeFiles/edit_cache.dir
+C:/GitHub/Projects/Cobri/Build/CMakeFiles/rebuild_cache.dir
