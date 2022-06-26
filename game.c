@@ -1,108 +1,117 @@
-#include "RenderEngineAPI.h"
+#include "RenderEngine.h"
 #include "game.h"
+#include "menu.h"
 
-INIT
+struct system_options {
+    int direction;
+    int scoresValue;
+    int isSpawnFruit;
+    const char snakeBody;
+    const char snakeHeadChar;
+    const char fruitBody;
+    char* stopChars;
+} system_options = {
+    .direction = START_DIRECTION,
+    .scoresValue = 0,
+    .isSpawnFruit = false,
+    .snakeBody = '+',
+    .snakeHeadChar = 'o',
+    .fruitBody = '@',
+    .stopChars = "|-_+#"
+};
 
-int difficultMode = NORMAL;
-int spawnFruitFrequency = 3; // every n seconds spawn fruit
-int scoresValue = 0;
+struct user_options {
+    int difficultMode;
+    int spawnFruitFrequency; // every n seconds spawn fruit
+} user_options = {
+    .difficultMode = DEFAULT_DIFFICULT_MODE,
+    .spawnFruitFrequency = DEFAULT_FRUIT_SPAWN_FREQUENCY
+};
 
-int startPosition = ((MAXWIDTH/2) + MAXWIDTH*(MAXHEIGHT/2-1));
-int startDirection = RIGHT;
-int direction;
-char stoperChars[] = "|-_+#";
-char snakeBody = '+';
-char snakeHeadChar = 'o';
-char fruitBody = '@';
-
-time_t timer;
-int t = 0;
+struct Snake* snakeHead;
 
 void Start() {
-    timer = time(NULL);
-    srand(timer);
-    direction = startDirection;
     InitializeSnake();
     AddSnakeBody();
     MainMenu();
 }
 
 void Update() {
-    snakeHead->pos = startPosition;
-    frame[snakeHead->pos] = snakeHeadChar;
-    Render();
-
     char inputButton;
-    for (;;) {
-        timer = time(NULL);
+    time_t timer;
 
+    FOREVER {
+        timer = time(NULL);
         PrintScores();
-        GoSnake(direction, difficultMode);
+
+        Move();
 
         if (kbhit()) {
             inputButton = getch();
             
             switch(inputButton) {
-                case 'w':
-                case 'W':
-                case UP_ARROW:
-                    direction = (direction != DOWN)? UP : DOWN;
-                    break;
-
-                case 's':
-                case 'S':
-                case DOWN_ARROW:
-                    direction = (direction != UP)? DOWN : UP;
+                case 'd':
+                case 'D':
+                case RIGHT_ARROW:
+                    system_options.direction = (system_options.direction != LEFT)? RIGHT : LEFT;
                     break;
 
                 case 'a':
                 case 'A':
                 case LEFT_ARROW:
-                    direction = (direction != RIGHT)? LEFT : RIGHT;
+                    system_options.direction = (system_options.direction != RIGHT)? LEFT : RIGHT;
                     break;
-                    
-                case 'd':
-                case 'D':
-                case RIGHT_ARROW:
-                    direction = (direction != LEFT)? RIGHT : LEFT;
+
+                case 'w':
+                case 'W':
+                case UP_ARROW:
+                    system_options.direction = (system_options.direction != DOWN)? UP : DOWN;
+                    break;
+
+                case 's':
+                case 'S':
+                case DOWN_ARROW:
+                    system_options.direction = (system_options.direction != UP)? DOWN : UP;
                     break;
 
                 case 'q':
                 case 'Q':
                 case ESCAPE:
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                     break;
             }
         }
-        if ((timer % spawnFruitFrequency) == 0) {
-            ++t;
+
+        if ((timer % user_options.spawnFruitFrequency) == 0) {
+            ++system_options.isSpawnFruit;
             GenerateFruit();   
         } else {
-            t = 0;
+            system_options.isSpawnFruit = false;
         }
     }
 }
 
 void PrintScores() {
-    int pad = MAXWIDTH+1;
+    int padding = MAXWIDTH+1;
     char* scoresStr = "Scores";
-    char buf[3];
-    sprintf(buf, "%d", scoresValue);
+    char scoresValueStr[10];
+    sprintf(scoresValueStr, "%d", system_options.scoresValue);
     
     for (int i = 0; i < strlen(scoresStr); ++i) {
-        frame[pad+i] = scoresStr[i];
+        frame[padding+i] = scoresStr[i];
     }
-    for (int i = 0; i < strlen(buf); ++i) {
-        frame[pad+1+strlen(scoresStr)+i] = buf[i];        
+    for (int i = 0; i < strlen(scoresValueStr); ++i) {
+        frame[padding+1+strlen(scoresStr)+i] = scoresValueStr[i];        
     }
 }
 
 void ResetGame() {
     struct Snake* current = snakeHead;
-    snakeHead->pos = startPosition;
+
+    snakeHead->position = START_POSITION;
     snakeHead->nextBody = NULL;
-    direction = startDirection;
-    scoresValue = 0;
+    system_options.direction = START_DIRECTION;
+    system_options.scoresValue = 0;
     
     if (current->nextBody != NULL) {
         current = current->nextBody;
@@ -117,7 +126,7 @@ void ResetGame() {
 
 void InitializeSnake() {
     snakeHead = malloc(sizeof(struct Snake));
-    snakeHead->pos = startPosition;
+    snakeHead->position = START_POSITION;
     snakeHead->nextBody = NULL;
 }
 
@@ -129,182 +138,183 @@ void AddSnakeBody() {
     }
 
     current->nextBody = malloc(sizeof(struct Snake));
-    if (direction == RIGHT) {
-        current->nextBody->pos = current->pos-2;
-    }
-    if (direction == LEFT) {
-        current->nextBody->pos = current->pos+1;
-    }
-    if (direction == UP) {
-        current->nextBody->pos = current->pos+MAXWIDTH;
-    }
-    if (direction == DOWN) {
-        current->nextBody->pos = current->pos-MAXWIDTH;
+
+    switch(system_options.direction) {
+        case RIGHT:
+            current->nextBody->position = current->position-2;
+            break;
+
+        case LEFT:
+            current->nextBody->position = current->position+1;
+            break;
+
+        case UP:
+            current->nextBody->position = current->position+MAXWIDTH;
+            break;
+
+        case DOWN:
+            current->nextBody->position = current->position-MAXWIDTH;
+            break;
     }
     current->nextBody->nextBody = NULL;
-
-}
-
-void GoSnake(int direction, int latency) {
-    if (direction == UP) {
-        Move(UP);
-    }
-    if (direction == DOWN) {
-        Move(DOWN);    
-    }
-    if (direction == LEFT) {
-        Move(LEFT);
-    }
-    if (direction == RIGHT) {
-        Move(RIGHT);
-    }
-    _sleep(latency);
 }
 
 void GenerateFruit() {
-    if (t != 1) {return;}
-    int fruitPos;
+    if (system_options.isSpawnFruit != true) {return;}
+    int fruitPosition;
 
     regenerate:
-    int x = rand() % (MAXWIDTH-1);
-    if (x == 0) x = 1;
-    int y = rand() % (MAXHEIGHT-1);
-    if (y == 0) y = 1;
+    int x = ((rand() % (MAXWIDTH-1)) == 0)? 1 : rand() % (MAXWIDTH-1);
+    int y = ((rand() % (MAXHEIGHT-1)) == 0)? 1 : rand() % (MAXHEIGHT-1);
 
-    fruitPos = x + (y*MAXWIDTH);
+    fruitPosition = x + (y*MAXWIDTH);
 
-    // if (fruitPos == snakeHead->pos) {goto regenerate;}
-    if (frame[fruitPos] == fruitBody) {goto regenerate;}
-    if (y == (snakeHead->pos/MAXWIDTH)) {goto regenerate;}
-    if (frame[fruitPos+1] == fruitBody) {goto regenerate;}
-    if (frame[fruitPos-1] == fruitBody) {goto regenerate;}
-    if (frame[fruitPos+MAXWIDTH] == fruitBody) {goto regenerate;}
-    if (frame[fruitPos-MAXWIDTH] == fruitBody) {goto regenerate;}
-    for (int i = (MAXWIDTH+1); i < (MAXWIDTH+1+6+3); ++i) {
-        if (fruitPos == i) {goto regenerate;}
+    if    ( frame[fruitPosition] == system_options.fruitBody          || 
+            y == (snakeHead->position/MAXWIDTH)                       ||
+            frame[fruitPosition+1] == system_options.fruitBody        ||
+            frame[fruitPosition-1] == system_options.fruitBody        ||
+            frame[fruitPosition+MAXWIDTH] == system_options.fruitBody ||
+            frame[fruitPosition-MAXWIDTH] == system_options.fruitBody ) {
+        goto regenerate;
     }
 
-    frame[fruitPos] = fruitBody;
+    for (int i = (MAXWIDTH+1); i < (MAXWIDTH+1+6+3); ++i) {
+        if (fruitPosition == i) {goto regenerate;}
+    }
+
+    frame[fruitPosition] = system_options.fruitBody;
 }
 
-void Move(int direction) {
+void Move() {
     struct Snake* current = snakeHead;
+    int headPosition = 0;
+    int temp = 0;
 
-    if (direction == UP) {
-        int bufPos = snakeHead->pos;
-        snakeHead->pos -= MAXWIDTH;
-        for (int i = 0; i < strlen(stoperChars); ++i) {
-            if (frame[snakeHead->pos] == stoperChars[i]) {
-                GameOver();
+    switch(system_options.direction) {
+        case RIGHT:
+            headPosition = snakeHead->position;
+            snakeHead->position += 1;
+            for (int i = 0; i < strlen(system_options.stopChars); ++i) {
+                if (frame[snakeHead->position] == system_options.stopChars[i]) {
+                    GameOver();
+                }
             }
-        }
-        if (frame[snakeHead->pos] == fruitBody) {
-            AddSnakeBody();
-            ++scoresValue;
-        }
-        frame[snakeHead->pos] = snakeHeadChar;
-        if (current->nextBody != NULL) {
-            current = current->nextBody;
-        }
-        int temp = bufPos;
-        while (current->nextBody != NULL) {
-            temp = current->pos;
-            current->pos = bufPos;
-            bufPos = temp;
-            frame[current->pos] = snakeBody;
-            current = current->nextBody;
-        }
-        frame[temp] = charForFrameSpace;
-    }
+            if (frame[snakeHead->position] == system_options.fruitBody) {
+                AddSnakeBody();
+                ++system_options.scoresValue;
+            }
+            frame[snakeHead->position] = system_options.snakeHeadChar;
+            if (current->nextBody != NULL) {
+                current = current->nextBody;
+            }
+            temp = headPosition;
+            while (current->nextBody != NULL) {
+                temp = current->position; 
+                current->position = headPosition;
+                headPosition = temp;
+                frame[current->position] = system_options.snakeBody;
+                current = current->nextBody;
+            }
+            frame[temp] = charForFrameSpace;
+            break;
 
-    if (direction == DOWN) {
-        int bufPos = snakeHead->pos;
-        snakeHead->pos += MAXWIDTH;
-        for (int i = 0; i < strlen(stoperChars); ++i) {
-            if (frame[snakeHead->pos] == stoperChars[i]) {
-                GameOver();
+        case LEFT:
+            headPosition = snakeHead->position;
+            snakeHead->position -= 1;
+            for (int i = 0; i < strlen(system_options.stopChars); ++i) {
+                if (frame[snakeHead->position] == system_options.stopChars[i]) {
+                    GameOver();
+                }
             }
-        }
-        if (frame[snakeHead->pos] == fruitBody) {
-            AddSnakeBody();
-            ++scoresValue;
-        }
-        frame[snakeHead->pos] = snakeHeadChar;
-        if (current->nextBody != NULL) {
-            current = current->nextBody;
-        }
-        int temp = bufPos;
-        while (current->nextBody != NULL) {
-            temp = current->pos; 
-            current->pos = bufPos;
-            bufPos = temp;
-            frame[current->pos] = snakeBody;
-            current = current->nextBody;
-        }
-        frame[temp] = charForFrameSpace;
-    }
+            if (frame[snakeHead->position] == system_options.fruitBody) {
+                AddSnakeBody();
+                ++system_options.scoresValue;
+            }
+            frame[snakeHead->position] = system_options.snakeHeadChar;
+            if (current->nextBody != NULL) {
+                current = current->nextBody;
+            }
+            temp = headPosition;
+            while (current->nextBody != NULL) {
+                temp = current->position;
+                current->position = headPosition;
+                headPosition = temp;
+                frame[current->position] = system_options.snakeBody;
+                current = current->nextBody;
+            }
+            frame[temp] = charForFrameSpace;
+            break;
 
-    if (direction == LEFT) {
-        int bufPos = snakeHead->pos;
-        snakeHead->pos -= 1;
-        for (int i = 0; i < strlen(stoperChars); ++i) {
-            if (frame[snakeHead->pos] == stoperChars[i]) {
-                GameOver();
+        case UP:
+            headPosition = snakeHead->position;
+            snakeHead->position -= MAXWIDTH;
+            for (int i = 0; i < strlen(system_options.stopChars); ++i) {
+                if (frame[snakeHead->position] == system_options.stopChars[i]) {
+                    GameOver();
+                }
             }
-        }
-        if (frame[snakeHead->pos] == fruitBody) {
-            AddSnakeBody();
-            ++scoresValue;
-        }
-        frame[snakeHead->pos] = snakeHeadChar;
-        if (current->nextBody != NULL) {
-            current = current->nextBody;
-        }
-        int temp = bufPos;
-        while (current->nextBody != NULL) {
-            temp = current->pos;
-            current->pos = bufPos;
-            bufPos = temp;
-            frame[current->pos] = snakeBody;
-            current = current->nextBody;
-        }
-        frame[temp] = charForFrameSpace;
-    }
+            if (frame[snakeHead->position] == system_options.fruitBody) {
+                AddSnakeBody();
+                ++system_options.scoresValue;
+            }
+            frame[snakeHead->position] = system_options.snakeHeadChar;
+            if (current->nextBody != NULL) {
+                current = current->nextBody;
+            }
+            temp = headPosition;
+            while (current->nextBody != NULL) {
+                temp = current->position;
+                current->position = headPosition;
+                headPosition = temp;
+                frame[current->position] = system_options.snakeBody;
+                current = current->nextBody;
+            }
+            frame[temp] = charForFrameSpace;
+            break;
 
-    if (direction == RIGHT) {
-        int bufPos = snakeHead->pos;
-        snakeHead->pos += 1;
-        for (int i = 0; i < strlen(stoperChars); ++i) {
-            if (frame[snakeHead->pos] == stoperChars[i]) {
-                GameOver();
+        case DOWN:
+            headPosition = snakeHead->position;
+            snakeHead->position += MAXWIDTH;
+            for (int i = 0; i < strlen(system_options.stopChars); ++i) {
+                if (frame[snakeHead->position] == system_options.stopChars[i]) {
+                    GameOver();
+                }
             }
-        }
-        if (frame[snakeHead->pos] == fruitBody) {
-            AddSnakeBody();
-            ++scoresValue;
-        }
-        frame[snakeHead->pos] = snakeHeadChar;
-        if (current->nextBody != NULL) {
-            current = current->nextBody;
-        }
-        int temp = bufPos;
-        while (current->nextBody != NULL) {
-            temp = current->pos; 
-            current->pos = bufPos;
-            bufPos = temp;
-            frame[current->pos] = snakeBody;
-            current = current->nextBody;
-        }
-        frame[temp] = charForFrameSpace;
+            if (frame[snakeHead->position] == system_options.fruitBody) {
+                AddSnakeBody();
+                ++system_options.scoresValue;
+            }
+            frame[snakeHead->position] = system_options.snakeHeadChar;
+            if (current->nextBody != NULL) {
+                current = current->nextBody;
+            }
+            temp = headPosition;
+            while (current->nextBody != NULL) {
+                temp = current->position; 
+                current->position = headPosition;
+                headPosition = temp;
+                frame[current->position] = system_options.snakeBody;
+                current = current->nextBody;
+            }
+            frame[temp] = charForFrameSpace;
+            break;
     }
 
     PrintEdges();
     Render();
+    _sleep(user_options.difficultMode);
 }
 
 void GameOver() {
     GameOverMenu();
     PrintScores();
+}
+
+int main(int argc, char const *argv[]) {
+    StartEngine();          
+    Start();
+
+    return EXIT_SUCCESS;       
 }
 
 // 01100100 01110001 01101101 01110010 01100100 01110001 01101110 01100100 00100000 01101011 01110000 01110000

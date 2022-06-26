@@ -1,20 +1,14 @@
-#ifndef RenderEngineAPI_H_
-#define RenderEngineAPI_H_
-
-#define CSI "\x1b["
+#ifndef RenderEngine_H_
+#define RenderEngine_H_
 
 #include <time.h>
-#include <math.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <conio.h>
 
-#define INIT int main(int argc, char const *argv[]) { \
-	StartEngine();   \
-	Start();         \
-	return 0;        \
-}
+#define CSI "\x1b["
 
 #define UP_ARROW 72
 #define DOWN_ARROW 80
@@ -26,11 +20,16 @@
 #define MAXWIDTH (66+1)
 #define MAXHEIGHT (20+1)
 #define FRAMESIZE (MAXWIDTH*MAXHEIGHT)
-#define EDGESCOUNT (((MAXHEIGHT+MAXWIDTH)*2))
+
+#define TERMINAL_WIDTH 120
+
+#define MAX_ASCII_TEXT_ROWS 6
+
+#define FOREVER for(;;)
 
 enum alignmentModes {
-	TOLEFT,
-	TOCENTER
+	TO_LEFT,
+	TO_CENTER
 };
 
 enum edgesCharsElements {
@@ -47,22 +46,20 @@ struct animation {
 };
 
 extern char frame[FRAMESIZE];
-
-extern char charForFrameSpace;
-
-extern int edges[EDGESCOUNT];
-extern char edgesChars[];
-
-extern int alignmentMode;
-extern int terminalWidth;
+const extern char charForFrameSpace;
+extern char* edgesChars;
+extern int globalAlignmentMode;
 
 void Start();
 void Update();
 
 void StartEngine();
-void RenderFrameInit();
-void PrintAnimation(struct animation* anim, int startPos, int fps, float duration);
-void Render();
-void PrintEdges();
 
-#endif // RenderEngineAPI_H_
+void RenderFrameInit();
+void Render();
+
+void PrintEdges();
+void PrintWord(char* word);
+// void PrintAnimation(struct animation* anim, int startPos, int fps, float duration);
+
+#endif // RenderEngine_H_

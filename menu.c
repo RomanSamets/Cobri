@@ -1,21 +1,26 @@
-#include "RenderEngineAPI.h"
+#include "RenderEngine.h"
+#include "game.h"
 #include "menu.h"
 
 #include "words.h"
+
+static char* mainMenuOptionsStr = "Play Exit";
+static char* endMenuOptionsStr = "Replay Menu";
+static int optCount = 0;
 
 void MainMenu() {
 	PrintWord(gameName);
 
 	int selectedOption = 0;
 
-	mainMenu.alignment = TOCENTER;
+	mainMenu.alignment = TO_CENTER;
 	strcpy(mainMenu.options, mainMenuOptionsStr);
 	
 	PrintMenuOptions(selectedOption, mainMenu);
 	Render();
 
 	char inputButton;
-	for (;;) {
+	FOREVER {
 		if (kbhit()) {
 			inputButton = getch();
 			switch(inputButton) {
@@ -63,15 +68,14 @@ void GameOverMenu() {
 
 	int selectedOption = 0;
 
-	endMenu.alignment = TOCENTER;
+	endMenu.alignment = TO_CENTER;
 	strcpy(endMenu.options, endMenuOptionsStr);
 
 	PrintMenuOptions(selectedOption, endMenu);
 	Render();
 
 	char inputButton;
-	for (;;) {
-
+	FOREVER {
 		if (kbhit()) {
 			inputButton = getch();
 
@@ -117,36 +121,28 @@ void GameOverMenu() {
 	}
 }
 
-void PrintWord(char* word) {
-    int rows = MAXASCIITEXTROWS;
-    int wordLen = strlen(word);
-	int oneLineLen = wordLen/rows;
-    int wordPadding = (MAXWIDTH - (wordLen/rows) +1) / 2 + MAXWIDTH; //  // (/2) it's alignment to center 1 for left 	
 
-    int ly = 0;
-    int lw = 0;
-    for (int w = 0; w < wordLen; ++w) {
-        if ((w % oneLineLen)==0) { // && w != 0 // 
-            lw = 0;
-            ly += MAXWIDTH;
-        }
-        if (word[w] == '.' && charForFrameSpace != '.') {
-        	frame[lw + ly + wordPadding] = charForFrameSpace;
-        } else {
-        	frame[lw + ly + wordPadding] = word[w];
-        }
-        
-        ++lw;
-    }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void PrintMenuOptions(int selectedOption, struct Menu menu) {
 	int textPad = 0;
-	if (menu.alignment == TOCENTER) {
+	if (menu.alignment == TO_CENTER) {
 		textPad = MAXWIDTH / 2; 		
 	}
 	
-	if (menu.alignment == TOLEFT) {
+	if (menu.alignment == TO_LEFT) {
 		textPad = MAXWIDTH/10;
 	}
 
@@ -163,16 +159,16 @@ void PrintMenuOptions(int selectedOption, struct Menu menu) {
 	while (word != NULL) {
 		if (selectedOption == menu.optionsCount) {
 			for (int i = 0; i < strlen(selectIndicatorSymbol); ++i) {
-				frame[textPad + i + offsetSelectedSymbol+MAXWIDTH*(offsetBetweenObjects+offsetBetweenOptions)-((alignmentMode == TOCENTER)? (strlen(word)/2) : 0)] = selectIndicatorSymbol[i];				
+				frame[textPad + i + offsetSelectedSymbol+MAXWIDTH*(offsetBetweenObjects+offsetBetweenOptions)-((globalAlignmentMode == TO_CENTER)? (strlen(word)/2) : 0)] = selectIndicatorSymbol[i];				
 			}
 		} else {
 			for (int i = 0; i < strlen(selectIndicatorSymbol); ++i) {
-				frame[textPad + i + offsetSelectedSymbol+MAXWIDTH*(offsetBetweenObjects+offsetBetweenOptions)-((alignmentMode == TOCENTER)? (strlen(word)/2) : 0)] = charForFrameSpace;			
+				frame[textPad + i + offsetSelectedSymbol+MAXWIDTH*(offsetBetweenObjects+offsetBetweenOptions)-((globalAlignmentMode == TO_CENTER)? (strlen(word)/2) : 0)] = charForFrameSpace;			
 			}
 		}
 
 		for (int o = textPad; o < (textPad+strlen(word)); ++o) {
-			frame[o+MAXWIDTH*(offsetBetweenObjects+offsetBetweenOptions)-((alignmentMode == TOCENTER)? (strlen(word)/2) : 0)] = word[o-textPad];
+			frame[o+MAXWIDTH*(offsetBetweenObjects+offsetBetweenOptions)-((globalAlignmentMode == TO_CENTER)? (strlen(word)/2) : 0)] = word[o-textPad];
 		}
 
 		offsetBetweenOptions+=2;

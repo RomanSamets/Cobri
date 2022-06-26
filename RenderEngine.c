@@ -1,20 +1,13 @@
-#include "RenderEngineAPI.h"
+#include "RenderEngine.h"
 
 char frame[FRAMESIZE];
-char charForFrameSpace = ' ';
-char edgesChars[] = "-|+";
-char buffer[FRAMESIZE]; 
-int edges[EDGESCOUNT];
-int alignmentMode = TOCENTER;
-static int width = MAXWIDTH;
-int terminalWidth = 120;
+const char charForFrameSpace = ' ';
+int globalAlignmentMode = TO_CENTER;
 
 void StartEngine() {
 	RenderFrameInit();
 	PrintEdges();
 	Render();
-	time_t t;
-	srand((unsigned) time(&t)); 
 }
 
 void RenderFrameInit() {
@@ -24,6 +17,8 @@ void RenderFrameInit() {
 }
 
 void PrintEdges() {
+	char* edgesChars = "-|+";
+
 	// Corners
 	frame[0] = edgesChars[CORNERS]; // left top
 	frame[MAXWIDTH-1] = edgesChars[CORNERS]; // right top
@@ -45,41 +40,6 @@ void PrintEdges() {
 	for (int i = (MAXWIDTH*(MAXHEIGHT-1))+1; i < ((MAXWIDTH*MAXHEIGHT)-1); ++i) {
 		frame[i] = edgesChars[TOPBOTTOM];
 	}
-	
-	// Initialize edges
-	
-	// top side
-	for (int tsi = 0; tsi < MAXWIDTH; ++tsi) {
-		edges[tsi] = tsi;
-	}
-
-	// bottom side
-	int bsi=MAXWIDTH; 
-	while (bsi < (MAXWIDTH*2)) {
-		for (int i = (MAXWIDTH*(MAXHEIGHT-1)); i < (MAXWIDTH*MAXHEIGHT); ++i) {
-			edges[bsi] = i;
-			++bsi;
-		}
-	}
-
-	// left side
-	int lsi = (MAXWIDTH*2); 
-	while(lsi < ((MAXWIDTH*2)+MAXHEIGHT)) {
-		for (int i = 1; i <= MAXHEIGHT; ++i) {
-			edges[lsi] = ((MAXWIDTH*i));
-			++lsi;
-		}
-	}
-
-	// right side
-	int rsi = ((MAXWIDTH*2)+MAXHEIGHT); 
-	while(rsi < ((MAXWIDTH*2)+(MAXHEIGHT*2))) {
-		for (int i = 1; i <= MAXHEIGHT; ++i) {
-			edges[rsi] = (MAXWIDTH*i)-1;
-			++rsi;
-		}
-	}
-
 }
 
 // TODO: add universality with len. Input strRowLen can be different value. 
@@ -101,16 +61,41 @@ void PrintAnimation(struct animation* anim, int startPos, int fps, float duratio
     }
 }
 
+void PrintWord(char* word) {
+    int rows = MAX_ASCII_TEXT_ROWS;
+    int wordLen = strlen(word);
+	int oneLineLen = wordLen/rows;
+    int wordPadding = (MAXWIDTH - (wordLen/rows) +1) / 2 + MAXWIDTH; //  // (/2) it's alignment to center 1 for left 	
+
+    int ly = 0;
+    int lw = 0;
+    for (int w = 0; w < wordLen; ++w) {
+        if ((w % oneLineLen)==0) { // && w != 0 // 
+            lw = 0;
+            ly += MAXWIDTH;
+        }
+        if (word[w] == '.' && charForFrameSpace != '.') {
+        	frame[lw + ly + wordPadding] = charForFrameSpace;
+        } else {
+        	frame[lw + ly + wordPadding] = word[w];
+        }
+        
+        ++lw;
+    }
+}
+
 void Render() { 
+	static int width = MAXWIDTH;
+	static char buffer[FRAMESIZE]; 
     setvbuf(stdout, buffer, _IOFBF, FRAMESIZE);
-	fprintf(stdout, CSI"H"); // rewrite frame
+	fprintf(stdout, CSI"H");
 
 	for (int i = 0; i < FRAMESIZE; ++i) {
 		if ((i % MAXWIDTH) == 0) {
 			fprintf(stdout, "\n");
 			
-			if (alignmentMode == TOCENTER) {
-				for (int i = 0; i < (terminalWidth - (MAXWIDTH+1))/2; ++i) {
+			if (globalAlignmentMode == TO_CENTER) {
+				for (int i = 0; i < (TERMINAL_WIDTH - (MAXWIDTH+1))/2; ++i) {
 					fprintf(stdout," ");
 				}
 			}
