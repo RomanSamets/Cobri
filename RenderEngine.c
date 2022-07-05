@@ -106,5 +106,5 @@ void Render() {
 	}
 	
 	width=MAXWIDTH;
-	fflush(stdout);
+	// fflush(stdout);
 }
